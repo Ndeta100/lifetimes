@@ -1,30 +1,57 @@
 #![warn(rust_2018_idioms)]
-pub struct StrSplit {
-    remainder: &str,
-    delimeter: &str,
+#[derive(Debug)]
+pub struct StrSplit<'haystack, 'delimeter> {
+    remainder: Option<&'haystack str>,
+    delimeter: &'delimeter str,
 }
-impl StrSplit {
-    pub fn new(haystack: &str, delimeter: &str) -> Self {
+impl<'haystack, 'delimeter> StrSplit<'haystack, 'delimeter> {
+    pub fn new(haystack: &'haystack str, delimeter: &'delimeter str) -> Self {
         Self {
-            remainder: haystack,
+            remainder: Some(haystack),
             delimeter,
         }
     }
 }
 
-impl Iterator for StrSplit {
-    type Item = &str;
+impl<'haystack, 'delimeter> Iterator for StrSplit<'haystack, 'delimeter> {
+    type Item = &'haystack str;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next_deli) = self.remainder.find(self.delimeter) {
-            let until_delimeter = &self.remainder[..next_deli];
-            self.remainder = &self.remainder[(next_deli + self.remainder.len())..];
+        let remainder = self.remainder.as_mut()?;
+        //impl<T> Option<T>{fn as_mut(&mut self)->Option<T}
+        if let Some(next_delim) = remainder.find(self.delimeter) {
+            let until_delimeter = &remainder[..next_delim];
+            *remainder = &remainder[(next_delim + self.delimeter.len())..];
             Some(until_delimeter)
-        } else if self.remainder.is_empty() {
-            None
         } else {
-            let rest = self.remainder;
-            self.remainder = &[];
-            Some(rest)
+            self.remainder.take()
         }
     }
+}
+pub fn until_char<'s>(s: &'s str, c: char) -> &str {
+    StrSplit::new(s, &format!("{}", c))
+        .next()
+        .expect("strSpli alweays gives at least one results")
+}
+#[test]
+fn until_char_test() {
+    assert_eq!(until_char("Hello World", 'o'), "hell");
+}
+#[test]
+fn it_works() {
+    let haystack = "a b c d e";
+    let letters: Vec<_> = StrSplit::new(haystack, "").collect();
+    assert_eq!(letters, vec!["a", "b", "c", "d", "e"]);
+}
+
+#[test]
+fn tail() {
+    let haystack = "a b c d e";
+    let letters: Vec<_> = StrSplit::new(haystack, "").collect();
+    assert_eq!(letters, vec!["a", "b", "c", "d", "e"]);
+}
+#[test]
+fn empty_tail() {
+    let haystack = "a b c d e";
+    let letters: Vec<_> = StrSplit::new(haystack, "").collect();
+    assert_eq!(letters, vec!["a", "b", "c", "d", "e"]);
 }
